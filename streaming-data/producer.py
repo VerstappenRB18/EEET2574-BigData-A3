@@ -6,6 +6,7 @@ import boto3
 
 OWM_API_KEY = "8be8123961bf1e8135acf22a36c65d8b"
 KINESIS_STREAM_NAME = "weather-data-stream"
+SENT_DATES = set()
 
 # Initialize Kinesis client
 kinesis_client = boto3.client("kinesis", region_name="us-east-1")
@@ -85,9 +86,8 @@ def get_daily_weather(city):
 
 # Send data to Kinesis
 def put_records_to_kinesis(stream_name, records):
-    global sent_dates
     for record in records:
-        if record["time"] in sent_dates:
+        if record["time"] in SENT_DATES:
             log_message(f"Record for {record['time']} already sent. Skipping...")
             continue
 
@@ -98,7 +98,9 @@ def put_records_to_kinesis(stream_name, records):
                 PartitionKey=record["airport_id"]
             )
             log_message(f"Record sent to Kinesis. SequenceNumber: {response['SequenceNumber']}")
-            sent_dates.add(record["time"])
+            print("Record details: ")
+            print(json.dumps(record))
+            SENT_DATES.add(record["time"])
         except Exception as e:
             log_message(f"Failed to send record to Kinesis: {e}")
 
@@ -113,7 +115,6 @@ if __name__ == "__main__":
         if daily_weather:
             log_message(f"Sending daily weather data for {city} to Kinesis...")
             put_records_to_kinesis(KINESIS_STREAM_NAME, daily_weather)
-            log_message(f"All records for {city} have been sent to Kinesis.")
         else:
             log_message(f"No data found for {city}.")
 
