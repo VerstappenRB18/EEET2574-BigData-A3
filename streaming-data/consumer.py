@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 
 # MongoDB Configuration
 MONGO_URI = "mongodb+srv://cuongtran:cuongtran123@cluster0.a5r8g.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-DATABASE_NAME = "weather_db"
-COLLECTION_NAME = "weather_collection"
+DATABASE_NAME = "main"
+COLLECTION_NAME = "weather"
 
 # Kinesis Configuration
-KINESIS_STREAM_NAME = "weather-data-stream"  # Replace with your Kinesis stream name
+KINESIS_STREAM_NAME = "weather-data-stream"
 AWS_REGION = "us-east-1"
 
 # Create MongoDB client
@@ -24,7 +24,7 @@ kinesis_client = boto3.client("kinesis", region_name=AWS_REGION)
 def log_message(message):
     """Log messages with a timestamp."""
     current_time_utc = datetime.utcnow()
-    current_time_local = current_time_utc + timedelta(hours=7)  # Adjust for UTC+7
+    current_time_local = current_time_utc + timedelta(hours=7)
     formatted_time = current_time_local.strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{formatted_time}] {message}")
 
@@ -56,7 +56,7 @@ def consume_records():
                 try:
                     # Parse JSON data
                     json_data = json.loads(data)
-                    json_data["_id"] = sequence_number  # Use SequenceNumber as MongoDB's unique ID
+                    json_data["_id"] = sequence_number
 
                     # Check for duplicate records
                     if collection.find_one({"_id": sequence_number}):
