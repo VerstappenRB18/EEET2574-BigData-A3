@@ -36,16 +36,58 @@ def get_long_lat(city):
     except requests.exceptions.RequestException as e:
         log_message(f"Error getting long/lat for {city}: {e}")
         return None, None
+    
+
+# Get weather forecast for a city on a specific date
+def get_weather_on_date(city, date):
+    lat, long = get_long_lat(city)
+    if lat is None or long is None:
+        return None
+    
+    try:
+        # Fetch weather data from OpenWeatherMap
+        url = f"https://api.openweathermap.org/data/3.0/onecall/day_summary?lat={lat}&lon={long}&date={date}&appid={OWM_API_KEY}&units=metric"
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+
+        temp_avg = (data["temperature"]["max"] + data["temperature"]["min"]) / 2
+        temp_min = data["temperature"]["min"]
+        temp_max = data["temperature"]["max"]
+        precipitation = 1 if data["precipitation"]["total"] > 0 else 0
+        snow_depth = data.get("snow", 0)
+        wind_dir = data["wind"]["max"]["direction"]
+        wind_speed = data["wind"]["max"]["speed"] * 3.6
+        pressure = data["pressure"]["afternoon"]
+
+        return {
+            "time": date,
+            "city": city,
+            "tavg": round(temp_avg, 2),
+            "tmin": temp_min,
+            "tmax": temp_max,
+            "prcp": precipitation,
+            "snow": snow_depth,
+            "wdir": wind_dir,
+            "wspd": round(wind_speed, 2),
+            "pres": pressure,
+            "airport_id": "LAX"
+        }
+    
+    except requests.exceptions.RequestException as e:
+        log_message(f"Error getting weather for {city} on {date}: {e}")
+        return None
 
 
 # Get daily weather forecast for a city
 def get_daily_weather(city):
-    lat, lon = get_long_lat(city)
-    if lat is None or lon is None:
+    lat, long = get_long_lat(city)
+    if lat is None or long is None:
         return None
 
     try:
-        url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=current,minutely,hourly,alerts&appid={OWM_API_KEY}&units=metric"
+        # Fetch daily weather data from OpenWeatherMap
+        url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={long}&exclude=current,minutely,hourly,alerts&appid={OWM_API_KEY}&units=metric"
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
@@ -54,10 +96,10 @@ def get_daily_weather(city):
         formatted_data = []
         for day in daily_data:
             date = datetime.utcfromtimestamp(day.get("dt")).strftime('%Y-%m-%d')
-            temp_avg = (day["temp"]["day"] + day["temp"]["night"]) / 2
+            temp_avg = (day["temp"]["max"] + day["temp"]["min"]) / 2
             temp_min = day["temp"]["min"]
             temp_max = day["temp"]["max"]
-            precipitation = day.get("rain", 0)
+            precipitation = day["pop"]
             snow_depth = day.get("snow", 0)
             wind_dir = day["wind_deg"]
             wind_speed = day["wind_speed"] * 3.6
@@ -119,5 +161,4 @@ if __name__ == "__main__":
             log_message(f"No data found for {city}.")
 
         # Wait for 24 hours before the next execution
-        log_message("Waiting for the next day to fetch data...")
         time.sleep(24 * 60 * 60)
